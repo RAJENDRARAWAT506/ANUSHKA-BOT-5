@@ -172,9 +172,43 @@ EMOJI_CHANNEL      = EMOJI_YIN        # ☯️ used for the "Tracked Channel" se
 EMOJI_USER_MENU    = "6163314886219665690"  # 📋 used for the User Menu (reply-keyboard) caption
 EMOJI_MENU_REMOVE  = EMOJI_REPLY_REMOVE
 
+# ═══════════════════════════════════════════════════════════════════
+# STYLIZED FONT HELPERS
+# Same unicode "font" used consistently everywhere: 𝐁𝐨𝐥𝐝 for button
+# labels + panel titles, and 𝗌𝖺𝗇𝗌-𝗌𝖾𝗋𝗂𝖿 for regular body copy/instructions.
+# Plain text.translate() swap — safe on its own, but must NEVER be run
+# over a full HTML string (it would mangle tag names like <b> into
+# <𝖻>), so use bold()/sans() only on plain fragments, never on text
+# that still has to pass through Telegram's HTML parser untouched.
+# ═══════════════════════════════════════════════════════════════════
+_BOLD_SRC  = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+_BOLD_DST  = "𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝐖𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤𝐥𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯𝐰𝐱𝐲𝐳𝟎𝟏𝟐𝟑𝟒𝟓𝟔𝟕𝟖𝟗"
+_SANS_SRC  = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+_SANS_DST  = "𝖠𝖡𝖢𝖣𝖤𝖥𝖦𝖧𝖨𝖩𝖪𝖫𝖬𝖭𝖮𝖯𝖰𝖱𝖲𝖳𝖴𝖵𝖶𝖷𝖸𝖹𝖺𝖻𝖼𝖽𝖾𝖿𝗀𝗁𝗂𝗃𝗄𝗅𝗆𝗇𝗈𝗉𝗊𝗋𝗌𝗍𝗎𝗏𝗐𝗑𝗒𝗓𝟢𝟣𝟤𝟥𝟦𝟧𝟨𝟩𝟪𝟫"
+_BOLD_MAP  = str.maketrans(_BOLD_SRC, _BOLD_DST)
+_SANS_MAP  = str.maketrans(_SANS_SRC, _SANS_DST)
+
+def bold(text: str) -> str:
+    """𝐁𝐨𝐥𝐝 stylized unicode — used for button labels and panel titles."""
+    return text.translate(_BOLD_MAP)
+
+def sans(text: str) -> str:
+    """𝗌𝖺𝗇𝗌-𝗌𝖾𝗋𝗂𝖿 stylized unicode — used for plain instructional lines."""
+    return text.translate(_SANS_MAP)
+
+_UNSTYLE_MAP = str.maketrans(_BOLD_DST + _SANS_DST, _BOLD_SRC + _SANS_SRC)
+
+def unstyle(text: str) -> str:
+    """Reverse bold()/sans() styling. Since every button is now rendered
+    in the stylized font, Telegram echoes that same stylized text back
+    to us when the user taps it — this converts it back to plain ASCII
+    so all the `if text == "Broadcast"` style checks keep working."""
+    return text.translate(_UNSTYLE_MAP)
+
 def btn(text, style=None, emoji_id=None):
-    """Build a raw reply keyboard button dict."""
-    b = {"text": text}
+    """Build a raw reply keyboard button dict. Text is auto-styled bold
+    so every button across the whole bot uses the same font."""
+    b = {"text": bold(text)}
     if style:
         b["style"] = style
     if emoji_id:
@@ -1211,7 +1245,7 @@ async def send_sequence_to_user(bot, user_id: int):
         if menu_kb:
             await _post("sendMessage", {
                 "chat_id": user_id,
-                "text": f'{pe(EMOJI_USER_MENU,"📋")} <b>𝐌𝐞𝐧𝐮</b> — 𝖳𝖺𝗉 𝖺 𝖻𝗎𝗍𝗍𝗈𝗇 𝖻𝖾𝗅𝗈𝗐 𝗍𝗈 𝗀𝖾𝗍 𝗍𝗁𝖾 𝖼𝗈𝗇𝗍𝖾𝗇𝗍',
+                "text": f'{pe(EMOJI_USER_MENU,"📋")} <b>{bold("Menu")}</b> — {sans("Tap a button below to get the content")}',
                 "parse_mode": "HTML",
                 "reply_markup": menu_kb
             })
@@ -1433,7 +1467,7 @@ async def cmd_stats(update, context):
         f'{pe(EMOJI_CHANNEL,"☯️")} <b>Live channel members:</b> <code>N/A (no channel set or bot not admin there)</code>\n'
     )
     await send_raw_message(user.id,
-        f'{pe(EMOJI_CHART,"📊")} <b>Bot Statistics</b> <i>(live, straight from the DB)</i>\n'
+        f'{pe(EMOJI_CHART,"📊")} <b>{bold("Bot Statistics")}</b> <i>{sans("(live, straight from the DB)")}</i>\n'
         f'━━━━━━━━━━━━━━━━━━━━━\n'
         f'{pe(EMOJI_STAR1,"⭐")} <b>Total users:</b> <code>{total}</code>\n'
         f'{pe(EMOJI_FIREWORK,"🎇")} <b>New today:</b> <code>{daily}</code>\n'
@@ -1446,18 +1480,18 @@ async def cmd_stats(update, context):
 
 async def cmd_help(update, context):
     await send_raw_message(update.effective_user.id,
-        f'{pe(EMOJI_BOT_PROFILE,"🤖")} <b>Bot Help</b>\n━━━━━━━━━━━━━━━━━━━━━\nUse /start to begin.\nIf you are an admin, the panel will appear automatically.',
+        f'{pe(EMOJI_BOT_PROFILE,"🤖")} <b>{bold("Bot Help")}</b>\n━━━━━━━━━━━━━━━━━━━━━\n{sans("Use /start to begin.")}\n{sans("If you are an admin, the panel will appear automatically.")}',
         cancel_kb_raw())
 
 async def open_panel(update, uid, note=""):
     await run(db_clear_state, uid)
     if is_main_admin(uid):
-        txt = f'{pe(EMOJI_TROPHY,"🏆")} <b>SUPER ADMIN PANEL</b>\n━━━━━━━━━━━━━━━━━━━━━\nUse the buttons below.'
+        txt = f'{pe(EMOJI_TROPHY,"🏆")} <b>{bold("SUPER ADMIN PANEL")}</b>\n━━━━━━━━━━━━━━━━━━━━━\n{sans("Use the buttons below.")}'
         kb = admin_panel_kb_raw()
     elif db_is_subadmin(uid):
         role = db_get_admin_role(uid)
         title = "ADMIN" if role == "admin" else "SUBADMIN"
-        txt = f'{pe(EMOJI_GEAR,"⚙️")} <b>{title} PANEL</b>\n━━━━━━━━━━━━━━━━━━━━━\nYour accessible actions:'
+        txt = f'{pe(EMOJI_GEAR,"⚙️")} <b>{bold(f"{title} PANEL")}</b>\n━━━━━━━━━━━━━━━━━━━━━\n{sans("Your accessible actions:")}'
         kb = subadmin_panel_kb_raw(uid)
     else:
         return
@@ -1466,14 +1500,14 @@ async def open_panel(update, uid, note=""):
     await send_raw_message(uid, txt, kb)
 
 async def _open_sequence_panel(update, uid, note=""):
-    txt = f'{pe(EMOJI_SEQUENCE,"📨")} <b>Message Sequence Panel</b>'
+    txt = f'{pe(EMOJI_SEQUENCE,"📨")} <b>{bold("Message Sequence Panel")}</b>'
     if note:
         txt = f"{note}\n\n{txt}"
     txt += "\n━━━━━━━━━━━━━━━━━━━━━"
     await send_raw_message(uid, txt, sequence_panel_kb_raw())
 
 async def _open_bot_profile_panel(update, uid, note=""):
-    txt = f'{pe(EMOJI_BOT_PROFILE,"🤖")} <b>Bot Profile Management</b>'
+    txt = f'{pe(EMOJI_BOT_PROFILE,"🤖")} <b>{bold("Bot Profile Management")}</b>'
     if note:
         txt = f"{note}\n\n{txt}"
     txt += "\n━━━━━━━━━━━━━━━━━━━━━"
@@ -1534,7 +1568,7 @@ async def on_message(update, context):
     user = update.effective_user
     if not user or not msg: return
     uid = user.id
-    text = (msg.text or msg.caption or "").strip()
+    text = unstyle((msg.text or msg.caption or "").strip())
     media_group_id = msg.media_group_id  # set when this message is part of an album
 
     if not is_any_admin(uid):
@@ -2126,7 +2160,7 @@ async def on_message(update, context):
             f'{pe(EMOJI_CHANNEL,"☯️")} <b>Live channel members:</b> <code>N/A (no channel set or bot not admin there)</code>\n'
         )
         await send_raw_message(uid,
-            f'{pe(EMOJI_CHART,"📊")} <b>Bot Statistics</b> <i>(live, straight from the DB)</i>\n━━━━━━━━━━━━━━━━━━━━━\n'
+            f'{pe(EMOJI_CHART,"📊")} <b>{bold("Bot Statistics")}</b> <i>{sans("(live, straight from the DB)")}</i>\n━━━━━━━━━━━━━━━━━━━━━\n'
             f'{pe(EMOJI_STAR1,"⭐")} <b>Total users:</b> <code>{total}</code>\n'
             f'{pe(EMOJI_FIREWORK,"🎇")} <b>New today:</b> <code>{daily}</code>\n'
             f'{channel_line}'
