@@ -1204,15 +1204,17 @@ async def send_sequence_to_user(bot, user_id: int):
                 payload["reply_markup"] = keyboard
             await _post("sendMessage", payload)
 
-        # Show the admin-configured user menu (reply keyboard) so it's
-        # visible to the user from the moment they start the bot.
+        # Show the admin-configured user menu (reply keyboard). Telegram
+        # only lets a custom reply keyboard ride along with a brand-new
+        # message (it can't be attached to one already sent), so we send
+        # one with an invisible character instead of visible text — no
+        # "here's your menu" caption shown to the user.
         menu_buttons = await run(db_get_user_menu)
         menu_kb = user_menu_kb_raw(menu_buttons)
         if menu_kb:
             await _post("sendMessage", {
                 "chat_id": user_id,
-                "text": f'{pe(EMOJI_USER_MENU,"📋")} <b>Menu</b> — tap a button below to get its content.',
-                "parse_mode": "HTML",
+                "text": "\u2063",  # invisible separator character
                 "reply_markup": menu_kb
             })
 
