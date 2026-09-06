@@ -169,7 +169,7 @@ EMOJI_LEAVE        = EMOJI_BAT        # 🦇 used for "Leave Message"
 EMOJI_PIN          = EMOJI_LIGHTNING4 # ⚡️ used for "Pin toggle"
 EMOJI_INBOX        = EMOJI_REPLY_SET  # 💬 used for the user→admin inbox notice
 EMOJI_CHANNEL      = EMOJI_YIN        # ☯️ used for the "Tracked Channel" setting
-EMOJI_USER_MENU    = EMOJI_LIST_MSG   # 📋 used for the User Menu (reply-keyboard) feature
+EMOJI_USER_MENU    = "6163314886219665690"  # 📋 used for the User Menu (reply-keyboard) caption
 EMOJI_MENU_REMOVE  = EMOJI_REPLY_REMOVE
 
 def btn(text, style=None, emoji_id=None):
@@ -1204,17 +1204,15 @@ async def send_sequence_to_user(bot, user_id: int):
                 payload["reply_markup"] = keyboard
             await _post("sendMessage", payload)
 
-        # Show the admin-configured user menu (reply keyboard). Telegram
-        # only lets a custom reply keyboard ride along with a brand-new
-        # message (it can't be attached to one already sent), so we send
-        # one with an invisible character instead of visible text — no
-        # "here's your menu" caption shown to the user.
+        # Show the admin-configured user menu (reply keyboard), with a
+        # short caption so the user knows what it's for.
         menu_buttons = await run(db_get_user_menu)
         menu_kb = user_menu_kb_raw(menu_buttons)
         if menu_kb:
             await _post("sendMessage", {
                 "chat_id": user_id,
-                "text": "\u2063",  # invisible separator character
+                "text": f'{pe(EMOJI_USER_MENU,"📋")} <b>𝐌𝐞𝐧𝐮</b> — 𝖳𝖺𝗉 𝖺 𝖻𝗎𝗍𝗍𝗈𝗇 𝖻𝖾𝗅𝗈𝗐 𝗍𝗈 𝗀𝖾𝗍 𝗍𝗁𝖾 𝖼𝗈𝗇𝗍𝖾𝗇𝗍',
+                "parse_mode": "HTML",
                 "reply_markup": menu_kb
             })
 
